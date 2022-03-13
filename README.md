@@ -1,4 +1,4 @@
-# de Neo Alpha :dna:
+# de Neo Alpha:dna:
 
 Personal references:
 
