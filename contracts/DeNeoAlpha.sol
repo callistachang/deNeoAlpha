@@ -1,34 +1,34 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.4;
+pragma solidity >=0.8.3;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "erc721a/contracts/ERC721A.sol";
 
 contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
-    uint256 public immutable maxMintAmountPerAddress;
+    string public provenanceHash;
+    uint256 public immutable maxMintAllowedPerAddress;
+    uint256 public immutable collectionSize;
     uint256 public immutable amountForTeam;
-    uint256 public immutable amountForPublicAndTeam;
-    string private _baseTokenURI;
-    uint32 public publicSaleStartTime;
+
+    uint32 public whitelistSaleStartTime;
     uint64 public whitelistPriceWei;
+    mapping(address => uint256) whitelistToMaxMintAllowed;
+
+    uint32 public publicSaleStartTime;
     uint64 public publicPriceWei;
-    mapping(address => uint256) whitelist;
+
+    string private _baseTokenURI;
 
     constructor(
-        uint256 maxMintAmountPerAddress_,
+        string memory provenanceHash_,
+        uint256 maxMintAllowedPerAddress_,
         uint256 collectionSize_,
         uint256 amountForTeam_
-    )
-        ERC721A(
-            "de Neo Alpha",
-            "DNA",
-            maxMintAmountPerAddress_,
-            collectionSize_
-        )
-    {
-        maxMintAmountPerAddress = maxMintAmountPerAddress_;
-        amountForPublicAndTeam = amountForPublicAndTeam;
+    ) ERC721A("de Neo Alpha", "DNA") {
+        provenanceHash = provenanceHash_;
+        maxMintAllowedPerAddress = maxMintAllowedPerAddress_;
+        collectionSize = collectionSize_;
         amountForTeam = amountForTeam_;
     }
 
@@ -40,15 +40,6 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
         _;
     }
 
-    function whitelistMint() external payable callerIsUser {
-        require(whitelistPriceWei != 0, "Mintlist sale has not begun yet");
-        require(whitelist[msg.sender] > 0, "Not eligible for whitelist");
-        require(totalSupply() + 1 <= collectionSize, "Max supply reached");
-        whitelist[msg.sender]--;
-        _safeMint(msg.sender, 1);
-        refundIfOver(whitelistPriceWei);
-    }
-
     function refundIfOver(uint256 price) private {
         require(msg.value >= price, "Need to send more ETH");
         if (msg.value > price) {
@@ -56,9 +47,70 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
         }
     }
 
-    function publicSaleMint(uint256 quantity) external payable callerIsUser {}
+    function whitelistMint() external payable callerIsUser {
+        require(
+            block.timestamp >= whitelistSaleStartTime,
+            "Whitelist sale has not begun yet"
+        );
+        require(
+            whitelistToMaxMintAllowed[msg.sender] > 0,
+            "Not eligible for whitelist"
+        );
+        require(totalSupply() + 1 <= collectionSize, "Max supply reached");
+        whitelistToMaxMintAllowed[msg.sender]--;
+        _safeMint(msg.sender, 1);
+        refundIfOver(whitelistPriceWei);
+    }
 
-    function isPublicSaleOn(uint256 publicPriceWei) {}
+    function publicSaleMint(uint256 quantity) external payable callerIsUser {
+        require(
+            block.timestamp >= publicSaleStartTime,
+            "Public sale has not begun yet"
+        );
+        require(
+            totalSupply() + quantity <= collectionSize,
+            "Max supply reached"
+        );
+        require(
+            numberMinted(msg.sender) + quantity <= maxMintAllowedPerAddress,
+            "Cannot mint this many"
+        );
+        _safeMint(msg.sender, quantity);
+        refundIfOver(publicPriceWei * quantity);
+    }
+
+    /// @notice Initial dev mint
+    function initialDevMint(uint256 quantity) external onlyOwner {
+        require(
+            totalSupply() + quantity <= amountForTeam,
+            "Too many already minted before dev mint"
+        );
+        require(
+            quantity % maxMintAllowedPerAddress == 0,
+            "Can only mint a multiple of the maxBatchSize"
+        );
+        uint256 numChunks = quantity / maxMintAllowedPerAddress;
+        for (uint256 i = 0; i < numChunks; i++) {
+            _safeMint(msg.sender, maxMintAllowedPerAddress);
+        }
+    }
+
+    function addToWhitelist(
+        address[] memory addresses,
+        uint256[] memory numSlots
+    ) external onlyOwner {
+        require(
+            addresses.length == numSlots.length,
+            "Addresses length does not match numSlots length"
+        );
+        for (uint256 i = 0; i < addresses.length; i++) {
+            whitelistToMaxMintAllowed[addresses[i]] = numSlots[i];
+        }
+    }
+
+    function _baseURI() internal view virtual override returns (string memory) {
+        return _baseTokenURI;
+    }
 
     function setBaseURI(string calldata baseURI) external onlyOwner {
         _baseTokenURI = baseURI;
