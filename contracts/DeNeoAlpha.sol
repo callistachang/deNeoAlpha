@@ -13,7 +13,7 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
 
     uint32 public whitelistSaleStartTime;
     uint64 public whitelistPriceWei;
-    mapping(address => uint256) whitelistToMaxMintAllowed;
+    mapping(address => uint256) public whitelistToMaxMintAllowed;
 
     uint32 public publicSaleStartTime;
     uint64 public publicPriceWei;
@@ -106,6 +106,31 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
         for (uint256 i = 0; i < addresses.length; i++) {
             whitelistToMaxMintAllowed[addresses[i]] = numSlots[i];
         }
+    }
+
+    function setWhitelistSaleStartTime(uint32 whitelistSaleStartTime_)
+        external
+        onlyOwner
+    {
+        whitelistSaleStartTime = whitelistSaleStartTime_;
+    }
+
+    function setPublicSaleStartTime(uint32 publicSaleStartTime_)
+        external
+        onlyOwner
+    {
+        publicSaleStartTime = publicSaleStartTime_;
+    }
+
+    function setWhitelistPriceWei(uint64 whitelistPriceWei_)
+        external
+        onlyOwner
+    {
+        whitelistPriceWei = whitelistPriceWei_;
+    }
+
+    function setPublicPriceWei(uint64 publicPriceWei_) external onlyOwner {
+        publicPriceWei = publicPriceWei_;
     }
 
     function _baseURI() internal view virtual override returns (string memory) {
