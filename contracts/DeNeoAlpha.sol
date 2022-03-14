@@ -33,10 +33,7 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
     }
 
     modifier callerIsUser() {
-        require(
-            tx.origin == msg.sender,
-            "The caller is another smart contract"
-        );
+        require(tx.origin == msg.sender, "Caller is another smart contract");
         _;
     }
 
@@ -101,7 +98,7 @@ contract DeNeoAlpha is Ownable, ERC721A, ReentrancyGuard {
     ) external onlyOwner {
         require(
             addresses.length == numSlots.length,
-            "Addresses length does not match numSlots length"
+            "Lengths of arrays don't match"
         );
         for (uint256 i = 0; i < addresses.length; i++) {
             whitelistToMaxMintAllowed[addresses[i]] = numSlots[i];
